@@ -1,26 +1,53 @@
+#!/usr/bin/env python3
+import os
 from constructs import Construct
 from aws_cdk import (
-    Duration,
+    App,
     Stack,
-    aws_iam as iam,
-    aws_sqs as sqs,
-    aws_sns as sns,
-    aws_sns_subscriptions as subs,
+    CfnOutput,
+    Duration,
+    aws_lambda as lambda_
 )
+import aws_cdk.aws_apigatewayv2_alpha as _apigw
+import aws_cdk.aws_apigatewayv2_integrations_alpha as _integrations
 
+
+DIRNAME = os.path.dirname(__file__)
 
 class InterviewVideoProcessorStack(Stack):
 
     def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
-        queue = sqs.Queue(
-            self, "InterviewVideoProcessorQueue",
-            visibility_timeout=Duration.seconds(300),
+        # Create the Lambda function to receive the request
+        # The source code is in './src' directory
+        lambda_fn = lambda_.Function(
+            self, "MyFunction",
+            runtime=lambda_.Runtime.PYTHON_3_10,
+            handler="index.handler",
+            code=lambda_.Code.from_asset(os.path.join(DIRNAME, "src")),
+            environment={
+                "env_var1": "value 1",
+                "env_var2": "value 2",
+            }
         )
 
-        topic = sns.Topic(
-            self, "InterviewVideoProcessorTopic"
+        # Create the HTTP API with CORS
+        http_api = _apigw.HttpApi(
+            self, "MyHttpApi",
+            cors_preflight=_apigw.CorsPreflightOptions(
+                allow_methods=[_apigw.CorsHttpMethod.GET],
+                allow_origins=["*"],
+                max_age=Duration.days(10),
+            )
         )
 
-        topic.add_subscription(subs.SqsSubscription(queue))
+        # Add a route to GET /
+        http_api.add_routes(
+            path="/",
+            methods=[_apigw.HttpMethod.GET],
+            integration=_integrations.HttpLambdaIntegration("LambdaProxyIntegration", handler=lambda_fn),
+        )
+
+        # Outputs
+        CfnOutput(self, "API Endpoint", description="API Endpoint", value=http_api.api_endpoint)
