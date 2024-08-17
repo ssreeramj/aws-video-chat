@@ -6,10 +6,10 @@ from aws_cdk import (
     Stack,
     CfnOutput,
     Duration,
-    aws_lambda as lambda_
+    aws_lambda as lambda_,
+    aws_apigatewayv2 as _apigw,
+    aws_apigatewayv2_integrations as _integrations,
 )
-import aws_cdk.aws_apigatewayv2_alpha as _apigw
-import aws_cdk.aws_apigatewayv2_integrations_alpha as _integrations
 
 
 DIRNAME = os.path.dirname(__file__)
@@ -23,9 +23,10 @@ class InterviewVideoProcessorStack(Stack):
         # The source code is in './src' directory
         lambda_fn = lambda_.Function(
             self, "MyFunction",
-            runtime=lambda_.Runtime.PYTHON_3_10,
-            handler="index.handler",
+            runtime=lambda_.Runtime.PYTHON_3_11,
+            handler="test_function.lambda_handler",
             code=lambda_.Code.from_asset(os.path.join(DIRNAME, "src")),
+            timeout=Duration.seconds(30),
             environment={
                 "env_var1": "value 1",
                 "env_var2": "value 2",
@@ -42,10 +43,10 @@ class InterviewVideoProcessorStack(Stack):
             )
         )
 
-        # Add a route to GET /
+        # Add a route to POST /
         http_api.add_routes(
-            path="/",
-            methods=[_apigw.HttpMethod.GET],
+            path="/greet",
+            methods=[_apigw.HttpMethod.POST],
             integration=_integrations.HttpLambdaIntegration("LambdaProxyIntegration", handler=lambda_fn),
         )
 
