@@ -2,7 +2,6 @@
 import os
 from constructs import Construct
 from aws_cdk import (
-    App,
     Stack,
     CfnOutput,
     Duration,
